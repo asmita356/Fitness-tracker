@@ -259,7 +259,7 @@ renderAl();
   out.textContent="Thinking...";
   try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),20000);
    const r=await fetch(COACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},signal:ctl.signal,body:JSON.stringify({message:q,name:P.name||"",goal:P.goal||"",level:P.level||"",day:c.n,streak:c.st,workout:c.w[0]+": "+c.w[1],habits:c.k,water:c.h.w||0,sleep:c.h.s||0,meals:c.h.m||0,score:c.sc,avgScore:c.avg,phase:c.mode,totalDays:c.len,tasks:(e.x||[]).map(t=>t.t+(t.d?" (done)":" (open)"))})});
-   clearTimeout(tm);if(!r.ok)throw new Error("server error "+r.status+" (check the Workers AI binding is named AI, then redeploy)");const d=await r.json();out.textContent=d.reply||(local()+why("empty reply from AI"))}
+   clearTimeout(tm);if(!r.ok){let dt="";try{const j=await r.json();dt=j.detail||""}catch(_){}throw new Error("server error "+r.status+(dt?": "+dt:""))}const d=await r.json();out.textContent=d.reply||(local()+why("empty reply from AI"))}
   catch(err){out.textContent=local()+why(err&&err.name==="TypeError"?"request blocked or unreachable (check COACH_URL and ALLOWED_ORIGIN)":err&&err.name==="AbortError"?"timed out after 20s":(err&&err.message)||"unknown error")}}
  document.getElementById("aask").onclick=()=>{const v=document.getElementById("aq").value.trim();if(v){ask(v,()=>ans(v));document.getElementById("aq").value=""}};
  document.getElementById("aq").onkeydown=e=>{if(e.key==="Enter")document.getElementById("aask").click()};
