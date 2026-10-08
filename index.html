@@ -120,7 +120,7 @@ const QUOTES=["Motivation starts you. Routine keeps you.","Do it even when you d
 const CHECKS=["Workout done","Drank 3 litres of water","No junk food or sugary drinks","Walked 6,000+ steps","In bed by 11 pm"];
 const DAY=864e5;
 // Paste your Cloudflare Worker URL here (see worker.js). Leave empty to use the built-in coach.
-const COACH_URL="";
+const COACH_URL="https://hidden-tree-8fc4displine30-ai.ovhal-asmita11.workers.dev";
 const FREE_AI_LIMIT=5; // AI questions per day on this device; extra questions use the built-in coach
 const BRAND="Discipline30";
 let S={start:null,log:{}};
@@ -248,17 +248,19 @@ renderAl();
  function brief(){const c=ctx();const tip=["Prepare tomorrow's workout clothes tonight.","Do your workout before checking social media.","Never miss twice in a row.","Track it so you can see it.","Decide the time of your workout and stick to it."][c.n%5];
   return (c.mode==="starter"?"Starter day ":"Day ")+c.n+" of "+c.len+", "+c.name+". Goal: "+c.goal+".\nToday: "+c.w[0]+".\nSo far: water "+(c.h.w||0)+"/10, sleep "+(c.h.s||0)+" h, discipline score "+c.sc+"/100.\n"+((c.h.w||0)<6?"Drink more water today. ":"")+((c.h.s||0)&&(c.h.s<7)?"Go to bed earlier tonight. ":"")+"\n"+(c.st>=3?"Your "+c.st+"-day streak is real progress. Protect it.":c.st>0?"You have a "+c.st+"-day streak. Build on it.":"Start your streak today. One finished day is enough.")+"\nFor your goal: "+(GOALTIP[c.goal]||tip)+"\nTip: "+tip}
  function ans(q){q=q.toLowerCase();const c=ctx();for(const r of R)if(r[0].test(q))return r[1](c);return "I can help with energy, soreness, time, motivation, food, water, sleep, your score and today's workout. Try asking about one of those."}
+ const DBG=/[?&]debug/.test(location.search);
+ function why(m){return DBG?"\n\n[debug] AI not used: "+m:""}
  async function ask(q,local){
-  if(!COACH_URL){out.textContent=local();return}
+  if(!COACH_URL){out.textContent=local()+why("COACH_URL is empty in index.html");return}
   const td=key(new Date());S.aiUse=(S.aiUse&&S.aiUse.d===td)?S.aiUse:{d:td,n:0};
-  if(S.aiUse.n>=FREE_AI_LIMIT){out.textContent=local()+"\n\n(You've used today's "+FREE_AI_LIMIT+" free AI answers. Smart replies return tomorrow.)";return}
+  if(S.aiUse.n>=FREE_AI_LIMIT){out.textContent=local()+why("daily limit reached")+"\n\n(You've used today's "+FREE_AI_LIMIT+" free AI answers. Smart replies return tomorrow.)";return}
   S.aiUse.n++;save();
   const c=ctx(),e=S.log[c.n]||{},P=S.profile||{};
   out.textContent="Thinking...";
   try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),20000);
    const r=await fetch(COACH_URL,{method:"POST",headers:{"Content-Type":"application/json"},signal:ctl.signal,body:JSON.stringify({message:q,name:P.name||"",goal:P.goal||"",level:P.level||"",day:c.n,streak:c.st,workout:c.w[0]+": "+c.w[1],habits:c.k,water:c.h.w||0,sleep:c.h.s||0,meals:c.h.m||0,score:c.sc,avgScore:c.avg,phase:c.mode,totalDays:c.len,tasks:(e.x||[]).map(t=>t.t+(t.d?" (done)":" (open)"))})});
-   clearTimeout(tm);if(!r.ok)throw 0;const d=await r.json();out.textContent=d.reply||local()}
-  catch(err){out.textContent=local()}}
+   clearTimeout(tm);if(!r.ok)throw new Error("server error "+r.status+" (check the Workers AI binding is named AI, then redeploy)");const d=await r.json();out.textContent=d.reply||(local()+why("empty reply from AI"))}
+  catch(err){out.textContent=local()+why(err&&err.name==="TypeError"?"request blocked or unreachable (check COACH_URL and ALLOWED_ORIGIN)":err&&err.name==="AbortError"?"timed out after 20s":(err&&err.message)||"unknown error")}}
  document.getElementById("aask").onclick=()=>{const v=document.getElementById("aq").value.trim();if(v){ask(v,()=>ans(v));document.getElementById("aq").value=""}};
  document.getElementById("aq").onkeydown=e=>{if(e.key==="Enter")document.getElementById("aask").click()};
  document.getElementById("abrief").onclick=()=>ask("Give me today's coaching: how to approach today's workout, one discipline tip, and a push based on my streak.",brief);
